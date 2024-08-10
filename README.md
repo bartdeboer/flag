@@ -1,10 +1,8 @@
 # Flag Package
 
-The `flag` package provides utilities for creating CLI (Command-Line Interface) programs in Go. It helps with parsing command-line arguments and environment variables, setting default values, and generating help messages based on struct tags. This document outlines the available functions and their usage.
+The `flag` package provides utilities for creating CLI programs. It helps with parsing command-line arguments and environment variables, setting default values, and generating help messages based on struct tags.
 
 ## Installation
-
-To install the package, run:
 
 ```sh
 go get github.com/bartdeboer/flag
@@ -78,12 +76,12 @@ if err != nil {
 }
 ```
 
-### `ParseArgs`
+### `SetFlags`
 
 Parses command-line arguments and populates the config struct. Fields in the struct can be tagged with flag for long names and short for the abbreviated names. This function is usually called last to ensure it can override settings from defaults and environment variables.
 
 ```go
-func ParseArgs(config interface{}, args []string) ([]string, error)
+func SetFlags(config interface{}, flags map[string]string) error
 ```
 
 Usage Example:
@@ -95,7 +93,8 @@ type Config struct {
 }
 
 var config Config
-remainingArgs, err := ParseArgs(&config, os.Args[1:])
+args, flags := flag.ParseArgs(os.Args[1:])
+err := SetFlags(&config, flags)
 if err != nil {
     log.Fatalf("Error parsing command-line arguments: %v", err)
 }
@@ -103,10 +102,10 @@ if err != nil {
 
 ### `ParseAll`
 
-Runs SetDefaults, ParseEnv and ParseArgs in that order.
+Runs SetDefaults, ParseEnv and ParseArgs.
 
 ```go
-func ParseAll(config interface{}, args []string) ([]string, error)
+func ParseAll(config interface{}, args []string) ([]string, map[string]string, error)
 ```
 
 Usage Example:
@@ -118,7 +117,7 @@ type Config struct {
 }
 
 var config Config
-remainingArgs, err := ParseAll(&config, os.Args[1:])
+remainingArgs, flags, err := ParseAll(&config, os.Args[1:])
 if err != nil {
     log.Fatalf("Error: %v", err)
 }

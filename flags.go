@@ -30,6 +30,8 @@ func PrintDefaults(config interface{}) {
 
 	for i := 0; i < val.NumField(); i++ {
 		field := typ.Field(i)
+		fieldValue := val.Field(i).Interface() // Get the current value of the field
+
 		usage := field.Tag.Get("usage")
 		short := field.Tag.Get("short")
 		def := field.Tag.Get("default")
@@ -44,11 +46,19 @@ func PrintDefaults(config interface{}) {
 			shortPart = "  " // Align when no shorthand is present
 		}
 		longPart := fmt.Sprintf("--%s %s", words.ToKebabCase(field.Name), typeName)
+
+		// Combine default and current value into one string
 		defaultStr := ""
 		if def != "" && def != "0" && def != "false" && def != "\"\"" {
 			defaultStr = fmt.Sprintf(" (default %v)", def)
 		}
-		fullUsage := usage + defaultStr
+
+		currentStr := fmt.Sprintf(" (current %v)", fieldValue)
+		if fieldValue == reflect.Zero(field.Type).Interface() {
+			currentStr = ""
+		}
+
+		fullUsage := usage + defaultStr + currentStr
 
 		entry := longPart
 		if len(entry) > maxNameTypeLength {
@@ -57,7 +67,6 @@ func PrintDefaults(config interface{}) {
 		entries[i] = [3]string{shortPart, entry, fullUsage}
 	}
 
-	fmt.Println("Usage:")
 	for _, e := range entries {
 		fmt.Printf("  %s %-*s  %s\n", e[0], maxNameTypeLength, e[1], e[2])
 	}
@@ -94,15 +103,13 @@ func SetDefaults(config interface{}) error {
 }
 
 // Parse parses the CLI arguments and populates the config struct.
-func ParseArgs(config interface{}, args []string) ([]string, error) {
-	outArgs, flags := ParseArguments(args)
-
+func SetFlags(config interface{}, flags map[string]string) error {
 	v := reflect.ValueOf(config)
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
 	if v.Kind() != reflect.Struct {
-		return nil, errors.New("config must be a pointer to a struct")
+		return errors.New("config must be a pointer to a struct")
 	}
 	t := v.Type()
 
@@ -121,12 +128,12 @@ func ParseArgs(config interface{}, args []string) ([]string, error) {
 			err = SetField(field, flagValue, true)
 		}
 		if err != nil {
-			PrintDefaults(config) // Print help message
-			return nil, fmt.Errorf("error parsing flag --%s: %v", flagName, err)
+			// PrintDefaults(config) // Print help message
+			return fmt.Errorf("error parsing flag --%s: %v", flagName, err)
 		}
 	}
 
-	return outArgs, nil
+	return nil
 }
 
 // SetField sets the field based on its type and the string value provided.
@@ -212,7 +219,7 @@ func ParseEnv(config interface{}) error {
 
 		err := SetField(field, envValue, true)
 		if err != nil {
-			PrintDefaults(config) // Print help message if there's an error setting the field
+			// PrintDefaults(config) // Print help message if there's an error setting the field
 			return fmt.Errorf("error setting environment variable %s: %v", envName, err)
 		}
 	}
@@ -220,24 +227,26 @@ func ParseEnv(config interface{}) error {
 	return nil
 }
 
-// ParseAll configures the application settings by setting defaults, parsing environment variables,
+// SetAll configures the application settings by setting defaults, parsing environment variables,
 // and command-line arguments. It also checks for help flags (--help, -h) to display help messages.
-func ParseAll(config interface{}, args []string) ([]string, error) {
+func ParseAll(config interface{}, args []string) ([]string, map[string]string, error) {
 	if err := SetDefaults(config); err != nil {
-		return nil, fmt.Errorf("error setting default values: %v", err)
+		return nil, nil, fmt.Errorf("error setting default values: %v", err)
 	}
 	if err := ParseEnv(config); err != nil {
-		return nil, fmt.Errorf("error parsing environment variables: %v", err)
+		return nil, nil, fmt.Errorf("error parsing environment variables: %v", err)
 	}
 	for _, arg := range args {
 		if arg == "--help" || arg == "-h" {
+			fmt.Println("Usage:")
 			PrintDefaults(config)
-			return nil, nil
+			return nil, nil, nil
 		}
 	}
-	outArgs, err := ParseArgs(config, args)
+	outArgs, flags := ParseArgs(args)
+	err := SetFlags(config, flags)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing command-line arguments: %v", err)
+		return nil, nil, fmt.Errorf("error parsing command-line arguments: %v", err)
 	}
-	return outArgs, nil
+	return outArgs, flags, nil
 }

@@ -60,7 +60,7 @@ func TestParseArguments(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			commands, argsMap := ParseArguments(tc.args)
+			commands, argsMap := ParseArgs(tc.args)
 			if !reflect.DeepEqual(commands, tc.expectedCommands) {
 				t.Errorf("Failed %s, Commands got: %v, want: %v", tc.name, commands, tc.expectedCommands)
 			}

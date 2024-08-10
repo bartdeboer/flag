@@ -2,7 +2,8 @@ package flag
 
 import "strings"
 
-func ParseArguments(args []string) (positionalArgs []string, flags map[string]string) {
+// Parses out positional arguments, flags and shorthand flags from the slice
+func ParseArgs(args []string) (positionalArgs []string, flags map[string]string) {
 	positionalArgs = []string{}
 	flags = make(map[string]string)
 

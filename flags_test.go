@@ -31,8 +31,7 @@ func TestPrintDefaults(t *testing.T) {
 
 	output := strings.TrimSpace(string(out))
 
-	expected := `Usage:
-  -p --port-number int   Port to listen on (default 8080)
+	expected := `  -p --port-number int   Port to listen on (default 8080)
      --host-name string  Host address (default localhost)
   -v --verbose bool      Verbose mode
   -t --timeout *int      Timeout in seconds`
@@ -59,7 +58,9 @@ func TestParseSuccess(t *testing.T) {
 		t.Fatalf("SetDefaults failed: %v", err)
 	}
 
-	if _, err := ParseArgs(&config, args); err != nil {
+	_, flags := ParseArgs(args)
+
+	if err := SetFlags(&config, flags); err != nil {
 		t.Fatalf("ParseArgs failed with error: %v", err)
 	}
 
@@ -96,7 +97,8 @@ func TestParseTypeError(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	_, err := ParseArgs(&config, args)
+	_, flags := ParseArgs(args)
+	err := SetFlags(&config, flags)
 
 	w.Close()
 	out, _ := io.ReadAll(r)
@@ -193,7 +195,8 @@ func TestConfigParsing(t *testing.T) {
 
 	args := []string{"--log-level=debug"}
 
-	_, err := ParseArgs(&config, args)
+	_, flags := ParseArgs(args)
+	err := SetFlags(&config, flags)
 	if err != nil {
 		t.Fatalf("ParseArgs failed: %v", err)
 	}
@@ -233,7 +236,7 @@ func TestParseAll(t *testing.T) {
 	os.Stdout = w
 
 	var config Config
-	remainingArgs, err := ParseAll(&config, append(args, "--help"))
+	remainingArgs, _, err := ParseAll(&config, append(args, "--help"))
 	w.Close()
 	out, _ := io.ReadAll(r)
 	os.Stdout = old
@@ -250,7 +253,7 @@ func TestParseAll(t *testing.T) {
 	}
 
 	// Normal operation without --help
-	remainingArgs, err = ParseAll(&config, args)
+	remainingArgs, _, err = ParseAll(&config, args)
 	if err != nil {
 		t.Fatalf("SetAll failed: %v", err)
 	}
